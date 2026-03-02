@@ -1,0 +1,11 @@
+langgraph
+langchain
+langchain-ollama
+google-api-python-client
+google-auth
+google-auth-oauthlib
+twilio
+pydantic
+python-dotenv
+requests
+pytest
