@@ -63,3 +63,4 @@ pytest -q
 - Notification channel selection:
   - If `TWILIO_WHATSAPP_FROM` and `TWILIO_WHATSAPP_TO` are set, messages are sent via WhatsApp.
   - Otherwise it uses `TWILIO_FROM_NUMBER` and `TWILIO_TO_NUMBER` for SMS.
+  - Note: Twilio SMS sending requires toll free number verification.
