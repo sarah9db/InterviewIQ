@@ -10,6 +10,67 @@ from interview_agents.tools.llm_utils import extract_json_object, make_llm
 
 llm = make_llm()
 
+# ---------------------------------------------------------------------------
+# Fast-reject constants (pre-LLM filtering)
+# ---------------------------------------------------------------------------
+
+SENDER_DOMAIN_BLOCKLIST = {
+    "linkedin.com",
+    "indeed.com",
+    "glassdoor.com",
+    "jobcase.com",
+    "noreply.github.com",
+    "notifications.google.com",
+}
+
+SPAM_SUBJECT_PATTERNS = [
+    re.compile(p, re.IGNORECASE)
+    for p in (
+        r"your daily job alert",
+        r"jobs matching your search",
+        r"new jobs? for you",
+        r"job recommendations?",
+        r"your job alert",
+        r"\d+ new jobs? in",
+    )
+]
+
+AUTOMATED_HEADERS = (
+    "List-Unsubscribe:",
+    "X-Mailer: JobAlerts",
+    "Precedence: bulk",
+    "X-Auto-Response-Suppress:",
+)
+
+
+def fast_reject_node(state: dict) -> dict:
+    """Cheap, deterministic pre-filter that rejects obvious non-interview emails."""
+    email_text = state.get("email_raw", "")
+    if not email_text:
+        return {"fast_rejected": False}
+
+    # --- sender domain check ---
+    from_match = re.search(r"From:\s*.*?([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)", email_text)
+    if from_match:
+        domain = from_match.group(1).rsplit("@", 1)[-1].lower()
+        if any(domain == d or domain.endswith("." + d) for d in SENDER_DOMAIN_BLOCKLIST):
+            return {"fast_rejected": True}
+
+    # --- subject pattern check ---
+    subject_match = re.search(r"Subject:\s*(.+)", email_text)
+    if subject_match:
+        subject = subject_match.group(1).strip()
+        for pattern in SPAM_SUBJECT_PATTERNS:
+            if pattern.search(subject):
+                return {"fast_rejected": True}
+
+    # --- automated header check ---
+    for header in AUTOMATED_HEADERS:
+        if header in email_text:
+            return {"fast_rejected": True}
+
+    return {"fast_rejected": False}
+
 
 def _is_sender_blocked(sender_email: str | None) -> bool:
     if not sender_email:

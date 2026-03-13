@@ -21,6 +21,7 @@ def run_poll_gmail(max_results: int, query: str | None = None) -> None:
     filtered = 0
     duplicates = 0
     failed = 0
+    fast_rejected = 0
 
     for item in messages:
         message_id = item["id"]
@@ -28,23 +29,26 @@ def run_poll_gmail(max_results: int, query: str | None = None) -> None:
             msg = gmail.get_message(message_id)
             raw_text = gmail.get_message_text(msg)
             result = app.invoke({"email_raw": raw_text, "gmail_message_id": message_id})
-            row_id = result.get("row_id", "")
-            if result.get("duplicate"):
+            if result.get("fast_rejected"):
+                fast_rejected += 1
+                print(f"Fast-rejected message {message_id}")
+            elif result.get("duplicate"):
                 duplicates += 1
                 print(f"Duplicate message {message_id} (already in sheet)")
-            elif result.get("filtered_out") or not row_id:
+            elif result.get("filtered_out") or not result.get("row_id", ""):
                 filtered += 1
                 print(f"Filtered out message {message_id}")
             else:
                 appended += 1
-                print(f"Appended message {message_id} -> row {row_id}")
+                print(f"Appended message {message_id} -> row {result.get('row_id', '')}")
         except Exception as exc:
             failed += 1
             print(f"Skipped message {message_id}: {exc}")
 
     print(
         f"Summary: fetched={len(messages)} appended={appended} "
-        f"filtered={filtered} duplicates={duplicates} failed={failed}"
+        f"filtered={filtered} fast_rejected={fast_rejected} "
+        f"duplicates={duplicates} failed={failed}"
     )
 
 
