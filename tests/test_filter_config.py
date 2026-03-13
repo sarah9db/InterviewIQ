@@ -47,7 +47,8 @@ def test_custom_config_changes_behavior(monkeypatch) -> None:
     # Low threshold + no strong confirmation required → context term alone is enough.
     parsed = EmailInfo(company="Acme", role="Engineer")
     text = "Let's schedule an interview."
-    assert is_interview_email(parsed, text)
+    result = is_interview_email(parsed, text)
+    assert result.accepted
 
 
 def test_custom_blocklist_via_monkeypatch(monkeypatch) -> None:
@@ -69,7 +70,9 @@ def test_custom_blocklist_via_monkeypatch(monkeypatch) -> None:
         meeting_link="https://zoom.us/j/123",
     )
     text = "Congratulations! We'd like to invite you to interview."
-    assert not is_interview_email(parsed, text)
+    result = is_interview_email(parsed, text)
+    assert not result.accepted
+    assert result.rejection_reason == "blocked sender"
 
     # Verify domain-level block.
     assert _is_sender_blocked("user@mail.spamcorp.com")

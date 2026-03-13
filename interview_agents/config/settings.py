@@ -111,6 +111,11 @@ class Settings:
     twilio_whatsapp_from: str = _env("TWILIO_WHATSAPP_FROM", "")
     twilio_whatsapp_to: str = _env("TWILIO_WHATSAPP_TO", "")
 
+    # Filter logging
+    filter_log_file: str = _env("FILTER_LOG_FILE", "logs/filter_decisions.jsonl")
+    filter_log_sheet_enabled: bool = _env("FILTER_LOG_SHEET_ENABLED", "false").lower() == "true"
+    filter_log_sheet_name: str = _env("FILTER_LOG_SHEET_NAME", "FilterLog")
+
     # Runtime state
     sms_last_run_file: str = _env("SMS_LAST_RUN_FILE", ".state/last_sms_run.txt")
 

@@ -25,7 +25,7 @@ class FakeSheetsClient:
 def test_strict_filter_rejects_weak_keyword_noise() -> None:
     parsed = EmailInfo(company="Acme", role="Engineer")
     email_text = "Thanks for reading our newsletter and product updates."
-    assert not is_interview_email(parsed, email_text)
+    assert not is_interview_email(parsed, email_text).accepted
 
 
 def test_write_sheet_appends_for_strong_interview_signal(monkeypatch) -> None:

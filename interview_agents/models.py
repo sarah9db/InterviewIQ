@@ -17,6 +17,25 @@ class EmailInfo(BaseModel):
     snippet: Optional[str] = Field(default=None)
 
 
+class FilterResult(BaseModel):
+    subject: Optional[str] = None
+    sender_email: Optional[str] = None
+    score: int = 0
+    company_role_points: int = 0
+    strong_phrase_points: int = 0
+    context_term_points: int = 0
+    meeting_signal_points: int = 0
+    negative_signal_points: int = 0
+    blocked_sender_points: int = 0
+    strong_confirmation: bool = False
+    accepted: bool = False
+    rejection_reason: Optional[str] = None
+    matched_strong_phrases: list[str] = Field(default_factory=list)
+    matched_context_terms: list[str] = Field(default_factory=list)
+    matched_negative_signals: list[str] = Field(default_factory=list)
+    timestamp: str = ""
+
+
 class SheetRow(BaseModel):
     id: str
     sender_name: Optional[str] = None
