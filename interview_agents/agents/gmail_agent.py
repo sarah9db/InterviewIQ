@@ -102,6 +102,18 @@ Rules:
 - Do not infer company/role from guesses. Use only explicit evidence from the email text.
 - interview_datetime should be ISO-8601 when possible.
 - snippet should be 1-2 concise sentences.
+- You MUST set company and role to null for any of these categories:
+  * Automated job alerts (e.g. "jobs you might like", "new jobs for you", "recommended jobs")
+  * Newsletters or daily/weekly digests
+  * Mass mailings, marketing emails, or promotional content
+  * Job board notifications from sites like LinkedIn, Indeed, Glassdoor, ZipRecruiter, Dice, or Monster
+  * Non-personal communications (bulk "noreply@" senders, unsubscribe links present)
+
+Examples of emails where company and role MUST be null:
+- "Your daily job alert: 15 new Data Engineer jobs in San Francisco. View all jobs. Unsubscribe."
+- "Hi, here are your top picks this week: Software Engineer at Acme, Backend Dev at WidgetCo..."
+- "New jobs for you: 3 roles match your profile. Apply now on Indeed."
+- "This week in tech hiring — our newsletter with tips and featured roles."
 
 Email:
 {email_text}
