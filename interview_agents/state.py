@@ -13,3 +13,4 @@ class GraphState(TypedDict, total=False):
     row_id: str
     prep_doc: str
     sms_sent: bool
+    fast_rejected: bool
