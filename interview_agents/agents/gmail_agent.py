@@ -2,88 +2,24 @@ from __future__ import annotations
 
 import re
 
+from interview_agents.config.settings import filter_config
 from interview_agents.models import EmailInfo
 from interview_agents.tools.llm_utils import extract_json_object, make_llm
 
 
 llm = make_llm()
 
-STRONG_POSITIVE_PHRASES = [
-    "next steps",
-    "congratulations",
-    "moving forward",
-    "would like to invite you",
-    "we would like to invite you",
-    "invite you to interview",
-    "invite you for an interview",
-    "phone screen",
-    "technical interview",
-    "onsite interview",
-    "final interview",
-    "schedule your interview",
-    "interview invitation",
-]
-
-INTERVIEW_CONTEXT_TERMS = [
-    "interview",
-    "screening call",
-    "recruiter call",
-    "hiring manager",
-    "panel interview",
-    "availability",
-    "calendar invite",
-]
-
-MEETING_HINTS = [
-    "meet.google.com",
-    "zoom.us",
-    "teams.microsoft.com",
-    "calendar.google.com",
-    "webex.com",
-]
-
-NEGATIVE_SIGNALS = [
-    "unsubscribe",
-    "promotion",
-    "discount",
-    "sale",
-    "newsletter",
-    "marketing",
-    "receipt",
-    "invoice",
-    "job alert",
-    "apply now",
-    "we found jobs",
-    "top picks",
-    "recommended jobs",
-    "daily digest",
-    "job opportunities",
-    "new jobs for you",
-    "jobs you might like",
-]
-
-BLOCKED_SENDER_EMAILS: set[str] = {
-    "noreply@linkedin.com",
-    "jobs-noreply@linkedin.com",
-}
-
-BLOCKED_SENDER_DOMAINS: set[str] = {
-    "indeed.com",
-    "glassdoor.com",
-    "ziprecruiter.com",
-    "dice.com",
-    "monster.com",
-}
-
 
 def _is_sender_blocked(sender_email: str | None) -> bool:
     if not sender_email:
         return False
     email_lower = sender_email.strip().lower()
-    if email_lower in BLOCKED_SENDER_EMAILS:
+    blocked_emails = {e.lower() for e in filter_config.blocked_sender_emails}
+    if email_lower in blocked_emails:
         return True
     domain = email_lower.rsplit("@", 1)[-1] if "@" in email_lower else ""
-    return any(domain == d or domain.endswith("." + d) for d in BLOCKED_SENDER_DOMAINS)
+    blocked_domains = {d.lower() for d in filter_config.blocked_sender_domains}
+    return any(domain == d or domain.endswith("." + d) for d in blocked_domains)
 
 
 def parse_email_node(state: dict) -> dict:
@@ -131,36 +67,39 @@ Email:
     return {"parsed_email": parsed}
 
 
-def _contains_any(text: str, phrases: list[str]) -> bool:
+def _contains_any(text: str, phrases: list[str] | tuple[str, ...]) -> bool:
     return any(p in text for p in phrases)
 
 
 def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
     text = re.sub(r"\s+", " ", (email_text or "").lower()).strip()
+    sc = filter_config.scoring
 
     has_company_role = bool(parsed.company and parsed.role)
-    has_strong_phrase = _contains_any(text, STRONG_POSITIVE_PHRASES)
-    has_context_term = _contains_any(text, INTERVIEW_CONTEXT_TERMS)
+    has_strong_phrase = _contains_any(text, filter_config.strong_positive_phrases)
+    has_context_term = _contains_any(text, filter_config.interview_context_terms)
     has_meeting_signal = bool(parsed.meeting_link or parsed.interview_datetime) or _contains_any(
-        text, MEETING_HINTS
+        text, filter_config.meeting_hints
     )
-    has_negative_signal = _contains_any(text, NEGATIVE_SIGNALS)
+    has_negative_signal = _contains_any(text, filter_config.negative_signals)
     is_blocked_sender = _is_sender_blocked(parsed.sender_email)
 
     score = 0
     if has_company_role:
-        score += 2
+        score += sc.company_role_weight
     if has_strong_phrase:
-        score += 3
+        score += sc.strong_phrase_weight
     if has_context_term:
-        score += 1
+        score += sc.context_term_weight
     if has_meeting_signal:
-        score += 2
+        score += sc.meeting_signal_weight
     if has_negative_signal:
-        score -= 2
+        score -= sc.negative_signal_penalty
     if is_blocked_sender:
-        score -= 5
+        score -= sc.blocked_sender_penalty
 
     # Require at least one strong confirmation path to avoid keyword-only noise.
     strong_confirmation = has_strong_phrase or has_meeting_signal
-    return bool(score >= 4 and strong_confirmation)
+    if sc.require_strong_confirmation:
+        return bool(score >= sc.threshold and strong_confirmation)
+    return bool(score >= sc.threshold)
