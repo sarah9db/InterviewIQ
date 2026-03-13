@@ -51,7 +51,39 @@ NEGATIVE_SIGNALS = [
     "marketing",
     "receipt",
     "invoice",
+    "job alert",
+    "apply now",
+    "we found jobs",
+    "top picks",
+    "recommended jobs",
+    "daily digest",
+    "job opportunities",
+    "new jobs for you",
+    "jobs you might like",
 ]
+
+BLOCKED_SENDER_EMAILS: set[str] = {
+    "noreply@linkedin.com",
+    "jobs-noreply@linkedin.com",
+}
+
+BLOCKED_SENDER_DOMAINS: set[str] = {
+    "indeed.com",
+    "glassdoor.com",
+    "ziprecruiter.com",
+    "dice.com",
+    "monster.com",
+}
+
+
+def _is_sender_blocked(sender_email: str | None) -> bool:
+    if not sender_email:
+        return False
+    email_lower = sender_email.strip().lower()
+    if email_lower in BLOCKED_SENDER_EMAILS:
+        return True
+    domain = email_lower.rsplit("@", 1)[-1] if "@" in email_lower else ""
+    return any(domain == d or domain.endswith("." + d) for d in BLOCKED_SENDER_DOMAINS)
 
 
 def parse_email_node(state: dict) -> dict:
@@ -101,6 +133,7 @@ def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
         text, MEETING_HINTS
     )
     has_negative_signal = _contains_any(text, NEGATIVE_SIGNALS)
+    is_blocked_sender = _is_sender_blocked(parsed.sender_email)
 
     score = 0
     if has_company_role:
@@ -113,6 +146,8 @@ def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
         score += 2
     if has_negative_signal:
         score -= 2
+    if is_blocked_sender:
+        score -= 5
 
     # Require at least one strong confirmation path to avoid keyword-only noise.
     strong_confirmation = has_strong_phrase or has_meeting_signal
