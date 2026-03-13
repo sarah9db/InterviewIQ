@@ -1,0 +1,70 @@
+strong_positive_phrases:
+  - "next steps"
+  - "congratulations"
+  - "moving forward"
+  - "would like to invite you"
+  - "we would like to invite you"
+  - "invite you to interview"
+  - "invite you for an interview"
+  - "phone screen"
+  - "technical interview"
+  - "onsite interview"
+  - "final interview"
+  - "schedule your interview"
+  - "interview invitation"
+
+interview_context_terms:
+  - "interview"
+  - "screening call"
+  - "recruiter call"
+  - "hiring manager"
+  - "panel interview"
+  - "availability"
+  - "calendar invite"
+
+meeting_hints:
+  - "meet.google.com"
+  - "zoom.us"
+  - "teams.microsoft.com"
+  - "calendar.google.com"
+  - "webex.com"
+
+negative_signals:
+  - "unsubscribe"
+  - "promotion"
+  - "discount"
+  - "sale"
+  - "newsletter"
+  - "marketing"
+  - "receipt"
+  - "invoice"
+  - "job alert"
+  - "apply now"
+  - "we found jobs"
+  - "top picks"
+  - "recommended jobs"
+  - "daily digest"
+  - "job opportunities"
+  - "new jobs for you"
+  - "jobs you might like"
+
+blocked_sender_emails:
+  - "noreply@linkedin.com"
+  - "jobs-noreply@linkedin.com"
+
+blocked_sender_domains:
+  - "indeed.com"
+  - "glassdoor.com"
+  - "ziprecruiter.com"
+  - "dice.com"
+  - "monster.com"
+
+scoring:
+  company_role_weight: 2
+  strong_phrase_weight: 3
+  context_term_weight: 1
+  meeting_signal_weight: 2
+  negative_signal_penalty: 2
+  blocked_sender_penalty: 5
+  threshold: 4
+  require_strong_confirmation: true
