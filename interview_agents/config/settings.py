@@ -51,5 +51,51 @@ class Settings:
     # Runtime state
     sms_last_run_file: str = _env("SMS_LAST_RUN_FILE", ".state/last_sms_run.txt")
 
+    # Email filtering keyword lists
+    strong_positive_phrases: tuple[str, ...] = (
+        "next steps",
+        "congratulations",
+        "moving forward",
+        "would like to invite you",
+        "we would like to invite you",
+        "invite you to interview",
+        "invite you for an interview",
+        "phone screen",
+        "technical interview",
+        "onsite interview",
+        "final interview",
+        "schedule your interview",
+        "interview invitation",
+    )
+
+    interview_context_terms: tuple[str, ...] = (
+        "interview",
+        "screening call",
+        "recruiter call",
+        "hiring manager",
+        "panel interview",
+        "availability",
+        "calendar invite",
+    )
+
+    meeting_hints: tuple[str, ...] = (
+        "meet.google.com",
+        "zoom.us",
+        "teams.microsoft.com",
+        "calendar.google.com",
+        "webex.com",
+    )
+
+    negative_signals: tuple[str, ...] = (
+        "unsubscribe",
+        "promotion",
+        "discount",
+        "sale",
+        "newsletter",
+        "marketing",
+        "receipt",
+        "invoice",
+    )
+
 
 settings = Settings()

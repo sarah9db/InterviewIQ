@@ -2,56 +2,12 @@ from __future__ import annotations
 
 import re
 
+from interview_agents.config.settings import settings
 from interview_agents.models import EmailInfo
 from interview_agents.tools.llm_utils import extract_json_object, make_llm
 
 
 llm = make_llm()
-
-STRONG_POSITIVE_PHRASES = [
-    "next steps",
-    "congratulations",
-    "moving forward",
-    "would like to invite you",
-    "we would like to invite you",
-    "invite you to interview",
-    "invite you for an interview",
-    "phone screen",
-    "technical interview",
-    "onsite interview",
-    "final interview",
-    "schedule your interview",
-    "interview invitation",
-]
-
-INTERVIEW_CONTEXT_TERMS = [
-    "interview",
-    "screening call",
-    "recruiter call",
-    "hiring manager",
-    "panel interview",
-    "availability",
-    "calendar invite",
-]
-
-MEETING_HINTS = [
-    "meet.google.com",
-    "zoom.us",
-    "teams.microsoft.com",
-    "calendar.google.com",
-    "webex.com",
-]
-
-NEGATIVE_SIGNALS = [
-    "unsubscribe",
-    "promotion",
-    "discount",
-    "sale",
-    "newsletter",
-    "marketing",
-    "receipt",
-    "invoice",
-]
 
 
 def parse_email_node(state: dict) -> dict:
@@ -95,12 +51,12 @@ def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
     text = re.sub(r"\s+", " ", (email_text or "").lower()).strip()
 
     has_company_role = bool(parsed.company and parsed.role)
-    has_strong_phrase = _contains_any(text, STRONG_POSITIVE_PHRASES)
-    has_context_term = _contains_any(text, INTERVIEW_CONTEXT_TERMS)
+    has_strong_phrase = _contains_any(text, settings.strong_positive_phrases)
+    has_context_term = _contains_any(text, settings.interview_context_terms)
     has_meeting_signal = bool(parsed.meeting_link or parsed.interview_datetime) or _contains_any(
-        text, MEETING_HINTS
+        text, settings.meeting_hints
     )
-    has_negative_signal = _contains_any(text, NEGATIVE_SIGNALS)
+    has_negative_signal = _contains_any(text, settings.negative_signals)
 
     score = 0
     if has_company_role:
@@ -114,6 +70,6 @@ def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
     if has_negative_signal:
         score -= 2
 
-    # Require at least one strong confirmation path to avoid keyword-only noise.
+    # Require company+role and at least one strong signal to avoid noise.
     strong_confirmation = has_strong_phrase or has_meeting_signal
-    return bool(score >= 4 and strong_confirmation)
+    return bool(score >= 4 and strong_confirmation and has_company_role)
