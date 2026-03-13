@@ -25,12 +25,14 @@ class FakeSheetsClient:
 def test_strict_filter_rejects_weak_keyword_noise() -> None:
     parsed = EmailInfo(company="Acme", role="Engineer")
     email_text = "Thanks for reading our newsletter and product updates."
-    assert not is_interview_email(parsed, email_text)
+    assert not is_interview_email(parsed, email_text).accepted
 
 
 def test_write_sheet_appends_for_strong_interview_signal(monkeypatch) -> None:
     fake = FakeSheetsClient(exists=False)
     monkeypatch.setattr("interview_agents.agents.sheet_agent.SheetsClient", lambda: fake)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.log_filter_result", lambda r: None)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.settings", type("S", (), {"filter_log_sheet_enabled": False})())
 
     state = {
         "gmail_message_id": "msg-1",
@@ -53,6 +55,8 @@ def test_write_sheet_appends_for_strong_interview_signal(monkeypatch) -> None:
 def test_write_sheet_marks_duplicate(monkeypatch) -> None:
     fake = FakeSheetsClient(exists=True)
     monkeypatch.setattr("interview_agents.agents.sheet_agent.SheetsClient", lambda: fake)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.log_filter_result", lambda r: None)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.settings", type("S", (), {"filter_log_sheet_enabled": False})())
 
     state = {
         "gmail_message_id": "msg-dup",
@@ -75,6 +79,8 @@ def test_write_sheet_marks_duplicate(monkeypatch) -> None:
 def test_write_sheet_filters_out_non_interview(monkeypatch) -> None:
     fake = FakeSheetsClient(exists=False)
     monkeypatch.setattr("interview_agents.agents.sheet_agent.SheetsClient", lambda: fake)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.log_filter_result", lambda r: None)
+    monkeypatch.setattr("interview_agents.agents.sheet_agent.settings", type("S", (), {"filter_log_sheet_enabled": False})())
 
     state = {
         "gmail_message_id": "msg-nope",

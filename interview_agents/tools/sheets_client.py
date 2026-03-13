@@ -9,7 +9,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
 
 from interview_agents.config.settings import settings
-from interview_agents.models import EmailInfo, SheetRow
+from interview_agents.models import EmailInfo, FilterResult, SheetRow
 
 SCOPES = [
     "https://www.googleapis.com/auth/gmail.readonly",
@@ -180,6 +180,32 @@ class SheetsClient:
             return dt.astimezone(timezone.utc)
         except ValueError:
             return None
+
+    def append_filter_log(self, result: FilterResult) -> None:
+        sheet_range = f"{settings.filter_log_sheet_name}!A:O"
+        row = [
+            result.timestamp,
+            result.subject or "",
+            result.sender_email or "",
+            str(result.score),
+            str(result.company_role_points),
+            str(result.strong_phrase_points),
+            str(result.context_term_points),
+            str(result.meeting_signal_points),
+            str(result.negative_signal_points),
+            str(result.blocked_sender_points),
+            str(result.strong_confirmation),
+            str(result.accepted),
+            result.rejection_reason or "",
+            ", ".join(result.matched_strong_phrases),
+            ", ".join(result.matched_negative_signals),
+        ]
+        self.service.spreadsheets().values().append(
+            spreadsheetId=self._require_sheet_id(),
+            range=sheet_range,
+            valueInputOption="RAW",
+            body={"values": [row]},
+        ).execute()
 
     @staticmethod
     def _row_to_values(row: SheetRow) -> list[str]:

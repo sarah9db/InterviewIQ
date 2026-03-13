@@ -1,9 +1,10 @@
 from __future__ import annotations
 
 import re
+from datetime import datetime, timezone
 
 from interview_agents.config.settings import filter_config
-from interview_agents.models import EmailInfo
+from interview_agents.models import EmailInfo, FilterResult
 from interview_agents.tools.llm_utils import extract_json_object, make_llm
 
 
@@ -71,35 +72,70 @@ def _contains_any(text: str, phrases: list[str] | tuple[str, ...]) -> bool:
     return any(p in text for p in phrases)
 
 
-def is_interview_email(parsed: EmailInfo, email_text: str = "") -> bool:
+def _matched_phrases(text: str, phrases: list[str] | tuple[str, ...]) -> list[str]:
+    return [p for p in phrases if p in text]
+
+
+def is_interview_email(parsed: EmailInfo, email_text: str = "") -> FilterResult:
     text = re.sub(r"\s+", " ", (email_text or "").lower()).strip()
     sc = filter_config.scoring
 
     has_company_role = bool(parsed.company and parsed.role)
-    has_strong_phrase = _contains_any(text, filter_config.strong_positive_phrases)
-    has_context_term = _contains_any(text, filter_config.interview_context_terms)
+    matched_strong = _matched_phrases(text, filter_config.strong_positive_phrases)
+    matched_context = _matched_phrases(text, filter_config.interview_context_terms)
+    matched_negative = _matched_phrases(text, filter_config.negative_signals)
     has_meeting_signal = bool(parsed.meeting_link or parsed.interview_datetime) or _contains_any(
         text, filter_config.meeting_hints
     )
-    has_negative_signal = _contains_any(text, filter_config.negative_signals)
     is_blocked_sender = _is_sender_blocked(parsed.sender_email)
 
-    score = 0
-    if has_company_role:
-        score += sc.company_role_weight
-    if has_strong_phrase:
-        score += sc.strong_phrase_weight
-    if has_context_term:
-        score += sc.context_term_weight
-    if has_meeting_signal:
-        score += sc.meeting_signal_weight
-    if has_negative_signal:
-        score -= sc.negative_signal_penalty
-    if is_blocked_sender:
-        score -= sc.blocked_sender_penalty
+    company_role_points = sc.company_role_weight if has_company_role else 0
+    strong_phrase_points = sc.strong_phrase_weight if matched_strong else 0
+    context_term_points = sc.context_term_weight if matched_context else 0
+    meeting_signal_points = sc.meeting_signal_weight if has_meeting_signal else 0
+    negative_signal_points = sc.negative_signal_penalty if matched_negative else 0
+    blocked_sender_points = sc.blocked_sender_penalty if is_blocked_sender else 0
 
-    # Require at least one strong confirmation path to avoid keyword-only noise.
-    strong_confirmation = has_strong_phrase or has_meeting_signal
-    if sc.require_strong_confirmation:
-        return bool(score >= sc.threshold and strong_confirmation)
-    return bool(score >= sc.threshold)
+    score = (
+        company_role_points
+        + strong_phrase_points
+        + context_term_points
+        + meeting_signal_points
+        - negative_signal_points
+        - blocked_sender_points
+    )
+
+    strong_confirmation = bool(matched_strong) or has_meeting_signal
+
+    # Determine acceptance and rejection reason.
+    if is_blocked_sender:
+        accepted = False
+        rejection_reason = "blocked sender"
+    elif score < sc.threshold:
+        accepted = False
+        rejection_reason = "below threshold"
+    elif sc.require_strong_confirmation and not strong_confirmation:
+        accepted = False
+        rejection_reason = "no strong confirmation"
+    else:
+        accepted = True
+        rejection_reason = None
+
+    return FilterResult(
+        subject=parsed.subject,
+        sender_email=parsed.sender_email,
+        score=score,
+        company_role_points=company_role_points,
+        strong_phrase_points=strong_phrase_points,
+        context_term_points=context_term_points,
+        meeting_signal_points=meeting_signal_points,
+        negative_signal_points=negative_signal_points,
+        blocked_sender_points=blocked_sender_points,
+        strong_confirmation=strong_confirmation,
+        accepted=accepted,
+        rejection_reason=rejection_reason,
+        matched_strong_phrases=matched_strong,
+        matched_context_terms=matched_context,
+        matched_negative_signals=matched_negative,
+        timestamp=datetime.now(timezone.utc).isoformat(),
+    )

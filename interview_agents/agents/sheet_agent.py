@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 from interview_agents.agents.gmail_agent import is_interview_email
+from interview_agents.config.settings import settings
 from interview_agents.models import EmailInfo
+from interview_agents.tools.filter_logger import log_filter_result
 from interview_agents.tools.sheets_client import SheetsClient
 
 
@@ -11,14 +13,20 @@ def write_sheet_node(state: dict) -> dict:
     sheets = SheetsClient()
     sheets.ensure_headers()
 
-    if not is_interview_email(parsed, state.get("email_raw", "")):
-        return {"row_id": "", "filtered_out": True}
+    result = is_interview_email(parsed, state.get("email_raw", ""))
+    log_filter_result(result)
+
+    if settings.filter_log_sheet_enabled:
+        sheets.append_filter_log(result)
+
+    if not result.accepted:
+        return {"row_id": "", "filtered_out": True, "filter_result": result}
 
     if message_id and sheets.row_exists(message_id):
-        return {"row_id": message_id, "duplicate": True}
+        return {"row_id": message_id, "duplicate": True, "filter_result": result}
 
     row_id = sheets.append_email(parsed, message_id=message_id)
-    return {"row_id": row_id, "filtered_out": False}
+    return {"row_id": row_id, "filtered_out": False, "filter_result": result}
 
 
 def update_sheet_node(state: dict) -> dict:
